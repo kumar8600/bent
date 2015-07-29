@@ -207,4 +207,20 @@ template <typename T>
 void bent::RegisterComponent(const std::string& name);
 ```
 
+## Special thanks
+
+this library is inspired by below awesome libraries
+
+* [ayebear/es]
+* [alecthomas/entityx]
+* [Catchouli/coment]
+* [miguelmartin75/anax]
+
+and [T-machine.org].
+
 [Entity-component-system]: http://en.wikipedia.org/wiki/Entity_component_system
+[alecthomas/entityx]: https://github.com/alecthomas/entityx
+[ayebear/es]: https://github.com/ayebear/es
+[Catchouli/coment]: https://github.com/Catchouli/coment
+[miguelmartin75/anax]: https://github.com/miguelmartin75/anax
+[T-machine.org]: http://t-machine.org/
