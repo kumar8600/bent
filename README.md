@@ -25,7 +25,7 @@ An [Entity-component-system] library
 
 ## install
 
-just copy the headers.
+wait
 
 ## tutorial
 
