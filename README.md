@@ -19,7 +19,7 @@ An [Entity-component-system] library
   * Visual Studio
     * \>= 2015
   * GCC
-    * \>= 5.0
+    * \>= 5.0 (NOTICE: Ubuntu 15.04 uses 4.9)
   * Clang
     * not tested
 
