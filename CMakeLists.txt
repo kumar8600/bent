@@ -28,3 +28,7 @@ target_include_directories(bent_test PRIVATE ./include)
 
 add_test(test_all bent_test)
 
+## install
+
+install(TARGETS bent DESTINATION lib)
+install(DIRECTORY include/bent DESTINATION include)
