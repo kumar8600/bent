@@ -158,7 +158,7 @@ namespace bent
         EntityHandle(WorldState & world_state) :
             id_(INVALID_ENTITY_ID),
             world_state_(&world_state),
-            cache_(INVALID_STATE_VERSION, WorldState::TemporalEntityHandle(nullptr))
+            cache_(INVALID_STATE_VERSION, WorldState::TemporalEntityHandle())
         {}
 
         EntityHandle(entity_id_t id, WorldState & world_state, WorldState::TemporalEntityHandle temporal_handle) :

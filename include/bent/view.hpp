@@ -34,7 +34,7 @@ namespace bent
                 } while (it_ != end_ && (it_->marked_as_garbage || !Match(it_->component_mask, component_mask_)));
                 if (it_ != end_)
                 {
-                    entity_handle_ = EntityHandle(it_->id, *world_state_, WorldState::TemporalEntityHandle(&*it_));
+                    entity_handle_ = EntityHandle(it_->id, *world_state_, WorldState::TemporalEntityHandle(it_ - world_state_->entities_.begin()));
                 }
                 return *this;
             }
@@ -82,7 +82,7 @@ namespace bent
                 }
                 if (it_ != end_)
                 {
-                    entity_handle_ = EntityHandle(it_->id, *world_state_, WorldState::TemporalEntityHandle(&*it_));
+                    entity_handle_ = EntityHandle(it_->id, *world_state_, WorldState::TemporalEntityHandle(it_ - world_state_->entities_.begin()));
                 }
             }
 

@@ -7,13 +7,11 @@
 
 bent::WorldState::WorldState() :
     region_(65536u /* 64 KiB */),
-    entities_(kumar::RegionAllocator<entity_t>(region_)),
     version_(0)
 {}
 
 bent::WorldState::WorldState(const WorldState & other) :
     region_(std::max(other.region_.size_allocated(), std::size_t(65536U) /* 64 KiB */)),
-    entities_(kumar::RegionAllocator<entity_t>(region_)),
     version_(other.version_ + 1)
 {
     CopyAllEntitiesButNoComponentValues(other.entities_, entities_, region_);
@@ -49,7 +47,7 @@ bent::WorldState::TemporalEntityHandle bent::WorldState::AddEntity(entity_id_t e
         throw std::out_of_range("entity id must be greater than before");
     }
     entities_.emplace_back(entity_id);
-    return TemporalEntityHandle(&entities_.back());
+    return TemporalEntityHandle(entities_.size() - 1);
 }
 
 void bent::WorldState::RemoveEntity(TemporalEntityHandle pos)
@@ -130,7 +128,7 @@ void * bent::WorldState::GetComponent(TemporalEntityHandle pos, component_type_i
     return p;
 }
 
-bool bent::WorldState::IsEntityValid(TemporalEntityHandle temporal_handle) const
+bool bent::WorldState::IsEntityValid(TemporalEntityHandle temporal_handle)
 {
     return !ToEntity(temporal_handle).marked_as_garbage;
 }
@@ -143,11 +141,11 @@ bent::WorldState::TemporalEntityHandle bent::WorldState::FindEntity(entity_id_t 
     });
     if (it != entities_.end() && it->id == entity_id && !it->marked_as_garbage)
     {
-        return TemporalEntityHandle(&*it);
+        return TemporalEntityHandle(it - entities_.begin());
     }
     else
     {
-        return TemporalEntityHandle(nullptr);
+        return TemporalEntityHandle();
     }
 }
 
@@ -155,7 +153,7 @@ void bent::WorldState::CollectGarbage()
 {
     kumar::Region region(region_.size_allocated());
     std::swap(region, region_);
-    decltype(entities_) entities((kumar::RegionAllocator<entity_t>(region_)));
+    decltype(entities_) entities;
 
     CopyAllEntitiesButNoComponentValues(entities_, entities, region_);
     MoveAllComponentValuesAndDestroy(entities, region_);
@@ -243,13 +241,14 @@ void * bent::WorldState::GetComponentPointer(const entity_t & entity, component_
     return *GetComponentPointerPointer(entity, component_id);
 }
 
-bent::WorldState::entity_t & bent::WorldState::ToEntity(TemporalEntityHandle temporal_handle) const
+bent::WorldState::entity_t & bent::WorldState::ToEntity(TemporalEntityHandle temporal_handle)
 {
-    return *static_cast<entity_t*>(temporal_handle.entity_ptr_);
+    return entities_[temporal_handle.index_];
 }
 
 void bent::WorldState::CopyAllEntitiesButNoComponentValues(const EntityContainer & from, EntityContainer & to, kumar::Region & region)
 {
+    to.reserve(from.size());
     for (auto& e : from)
     {
         if (!e.marked_as_garbage)

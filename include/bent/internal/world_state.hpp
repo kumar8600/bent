@@ -1,7 +1,7 @@
 #pragma once
 
 #include <bitset>
-#include <deque>
+#include <vector>
 
 #include "definitions.hpp"
 #include "region.hpp"
@@ -66,7 +66,7 @@ namespace bent
 
         // entity lookup
 
-        bool IsEntityValid(TemporalEntityHandle temporal_handle) const;
+        bool IsEntityValid(TemporalEntityHandle temporal_handle);
 
         TemporalEntityHandle FindEntity(entity_id_t entity_id);
 
@@ -81,7 +81,7 @@ namespace bent
         {
             bool operator==(const TemporalEntityHandle& rhs) const
             {
-                return entity_ptr_ == rhs.entity_ptr_;
+                return index_ == rhs.index_;
             }
 
             bool operator!=(const TemporalEntityHandle& rhs) const
@@ -91,7 +91,7 @@ namespace bent
 
             explicit operator bool() const
             {
-                return entity_ptr_ != nullptr;
+                return index_ != std::numeric_limits<decltype(index_)>::max();
             }
 
         private:
@@ -99,11 +99,15 @@ namespace bent
             friend EntityHandle;
             friend View;
 
-            TemporalEntityHandle(void * entity_ptr) :
-                entity_ptr_(entity_ptr)
+            TemporalEntityHandle() :
+                index_(std::numeric_limits<decltype(index_)>::max())
             {}
 
-            void * entity_ptr_;
+            TemporalEntityHandle(std::size_t index) :
+                index_(index)
+            {}
+
+            std::size_t index_;
         };
 
     private:
@@ -134,7 +138,7 @@ namespace bent
             bool marked_as_garbage;
         };
 
-        using EntityContainer = std::deque<entity_t, kumar::RegionAllocator<entity_t>>;
+        using EntityContainer = std::vector<entity_t>;
 
         // utilities
 
@@ -150,7 +154,7 @@ namespace bent
 
         void * GetComponentPointer(const entity_t& entity, component_type_id_t component_id);
 
-        entity_t& ToEntity(TemporalEntityHandle temporal_handle) const;
+        entity_t& ToEntity(TemporalEntityHandle temporal_handle);
 
 
         void CopyAllEntitiesButNoComponentValues(const EntityContainer & from, EntityContainer & to, kumar::Region & region);
