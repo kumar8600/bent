@@ -45,7 +45,7 @@ bent::World world;
 
 ### entities
 
-`bent::World::Create` create a entity and returns a `bent::EntityHandle`.
+`bent::World::Create` creates an entity and returns `bent::EntityHandle`.
 
 ```cpp
 auto entity = world.Create();
@@ -137,10 +137,10 @@ call below in begin or end of every frame:
 world.CollectGarbage();
 ```
 
-this runs copy gc.
 every destroyed entities and removed components are sweeped and components are sorted for better cache coherency.
+in other words, this is copy gc.
 
-when this is called, all pointer refering components is invalidated.
+when this function is called, all pointer refering components are invalidated.
 
 ### full example
 
