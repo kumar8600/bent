@@ -46,7 +46,11 @@ TEST_CASE("Component type manager well works", "[component_manager]")
     REQUIRE(manager.name(cmvelocity) == "cm_Velocity");
     REQUIRE(manager.name(cmflag) == "cm_Flag");
 
-    REQUIRE(typeid(manager.allocator(cmposition)) == typeid(kumar::DynamicRegionAllocator<CmPosition>));
-    REQUIRE(typeid(manager.allocator(cmvelocity)) == typeid(kumar::DynamicRegionAllocator<CmVelocity>));
-    REQUIRE(typeid(manager.allocator(cmflag)) == typeid(kumar::DynamicRegionAllocator<CmFlag>));
+    REQUIRE(typeid(manager.dynamic_constructor(cmposition)) == typeid(bent::DynamicConstructor<CmPosition>));
+    REQUIRE(typeid(manager.dynamic_constructor(cmvelocity)) == typeid(bent::DynamicConstructor<CmVelocity>));
+    REQUIRE(typeid(manager.dynamic_constructor(cmflag)) == typeid(bent::DynamicConstructor<CmFlag>));
+
+    REQUIRE(typeid(manager.component_pool_factory(cmposition)) == typeid(bent::ComponentPoolFactory<CmPosition>));
+    REQUIRE(typeid(manager.component_pool_factory(cmvelocity)) == typeid(bent::ComponentPoolFactory<CmVelocity>));
+    REQUIRE(typeid(manager.component_pool_factory(cmflag)) == typeid(bent::ComponentPoolFactory<CmFlag>));
 }

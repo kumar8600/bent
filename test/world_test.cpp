@@ -23,8 +23,8 @@ TEST_CASE("World is good", "[world]")
 {
     bent::World world;
 
-    // world::create is tested on `entity_handle_test.cpp`
-    // world::get is tested on `enitity_handle_test.cpp`
+    // world::Create is tested on `entity_handle_test.cpp`
+    // world::entity is tested on `enitity_handle_test.cpp`
 
     auto e1 = world.Create();
     auto e2 = world.Create();
@@ -38,15 +38,6 @@ TEST_CASE("World is good", "[world]")
 
     e2.Add<WtFlag>();
     e3.Add<WtFlag>();
-
-    SECTION("garbage collection")
-    {
-        e2.Destroy();
-
-        world.CollectGarbage();
-
-        REQUIRE(e1.Get<WtPosition>() + 1 == e3.Get<WtPosition>());
-    }
 
     SECTION("view creation without type")
     {

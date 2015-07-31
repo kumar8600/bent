@@ -13,9 +13,9 @@ TEST_CASE("Entity handles are well works", "[entity_handle]")
     SECTION("creation/destroying")
     {
         auto e1 = world.Create();
-        REQUIRE(e1.id() == 1);
+        REQUIRE(e1.id() == 0);
         auto e2 = world.Create();
-        REQUIRE(e2.id() == 2);
+        REQUIRE(e2.id() == 1);
 
         REQUIRE(e1.valid());
         REQUIRE(e2.valid());
@@ -24,16 +24,12 @@ TEST_CASE("Entity handles are well works", "[entity_handle]")
         REQUIRE_FALSE(e1.valid());
         REQUIRE(e2.valid());
 
-        // garbage collection does not invalidate entity handles.
-        world.CollectGarbage();
-        REQUIRE(e2.valid());
-
         REQUIRE_NOTHROW(e2.Destroy());
         REQUIRE_FALSE(e1.valid());
         REQUIRE_FALSE(e2.valid());
 
         auto e3 = world.Create();
-        REQUIRE(e3.id() == 3);
+        REQUIRE(e3.id() == (std::uint64_t(1) | std::uint64_t(1) << 32UL));
     }
     
     SECTION("component attaching/detaching")
@@ -88,7 +84,7 @@ TEST_CASE("Entity handles are well works", "[entity_handle]")
         auto e1 = world.Create();
         auto e2 = world.Create();
 
-        REQUIRE(e1 == world.Get(1));
+        REQUIRE(e1 == world.entity(0));
         REQUIRE(e1 != e2);
 
         REQUIRE(e1 == e1);

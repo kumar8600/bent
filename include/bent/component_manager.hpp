@@ -9,7 +9,8 @@
 #include <stdexcept>
 
 #include "internal/definitions.hpp"
-#include "internal/dynamic_region_allocator.hpp"
+#include "internal/dynamic_constructor.hpp"
+#include "internal/component_pool_factory.hpp"
 
 namespace bent
 {
@@ -26,25 +27,27 @@ namespace bent
         static ComponentManager& instance();
 
         template<typename T>
-        component_type_id_t RegisterComponent(const std::string& name);
+        std::uint16_t RegisterComponent(const std::string& name);
 
         template <typename T>
-        component_type_id_t id();
-        component_type_id_t id(const std::string& name) const;
-        std::string name(component_type_id_t id) const;
-        kumar::DynamicRegionAllocatorInterface & allocator(component_type_id_t id) const;
+        std::uint16_t id();
+        std::uint16_t id(const std::string& name) const;
+        std::string name(std::uint16_t id) const;
+        DynamicConstructorInterface & dynamic_constructor(std::uint16_t id) const;
+        ComponentPoolFactoryInterface & component_pool_factory(std::uint16_t id) const;
 
-        component_type_id_t size() const;
+        std::uint16_t size() const;
 
     private:
         ComponentManager()
         {}
 
-        std::unordered_map<std::string, component_type_id_t> id_by_name_;
-        std::unordered_map<component_type_id_t, std::string> name_by_id_;
-        std::unordered_map<std::type_index, component_type_id_t> id_by_type_;
-        std::deque<std::unique_ptr<kumar::DynamicRegionAllocatorInterface>> allocator_by_id_;
-        component_type_id_t size_ = 0; // id is start from 0.
+        std::unordered_map<std::string, std::uint16_t> id_by_name_;
+        std::unordered_map<std::uint16_t, std::string> name_by_id_;
+        std::unordered_map<std::type_index, std::uint16_t> id_by_type_;
+        std::deque<std::unique_ptr<DynamicConstructorInterface>> dynamic_constructor_by_id_;
+        std::deque<std::unique_ptr<ComponentPoolFactoryInterface>> component_pool_factory_by_id_;
+        std::uint16_t size_ = 0; // id is start from 0.
     };
 
     template <typename T>
@@ -61,7 +64,7 @@ namespace bent
     }
 
     template<typename T>
-    inline component_type_id_t ComponentManager::RegisterComponent(const std::string & name)
+    inline std::uint16_t ComponentManager::RegisterComponent(const std::string & name)
     {
         if (size_ == MAX_COMPONENTS)
         {
@@ -80,7 +83,7 @@ namespace bent
     }
 
     template <typename T>
-    inline component_type_id_t ComponentManager::id()
+    inline std::uint16_t ComponentManager::id()
     {
         auto it = id_by_type_.find(typeid(T));
         if (it != id_by_type_.end())
@@ -91,29 +94,35 @@ namespace bent
         {
             auto id = size_;
             id_by_type_.emplace(typeid(T), id);
-            allocator_by_id_.emplace_back(new kumar::DynamicRegionAllocator<T>);
+            dynamic_constructor_by_id_.emplace_back(new DynamicConstructor<T>);
+            component_pool_factory_by_id_.emplace_back(new ComponentPoolFactory<T>);
 
             ++size_;
             return id;
         }
     }
 
-    inline component_type_id_t ComponentManager::id(const std::string & name) const
+    inline std::uint16_t ComponentManager::id(const std::string & name) const
     {
         return id_by_name_.at(name);
     }
 
-    inline std::string ComponentManager::name(component_type_id_t id) const
+    inline std::string ComponentManager::name(std::uint16_t id) const
     {
         return name_by_id_.at(id);
     }
 
-    inline kumar::DynamicRegionAllocatorInterface & ComponentManager::allocator(component_type_id_t id) const
+    inline DynamicConstructorInterface & ComponentManager::dynamic_constructor(std::uint16_t id) const
     {
-        return *allocator_by_id_[id];
+        return *dynamic_constructor_by_id_[id];
     }
 
-    inline component_type_id_t ComponentManager::size() const
+    inline ComponentPoolFactoryInterface & ComponentManager::component_pool_factory(std::uint16_t id) const
+    {
+        return *component_pool_factory_by_id_[id];
+    }
+
+    inline std::uint16_t ComponentManager::size() const
     {
         return size_;
     }

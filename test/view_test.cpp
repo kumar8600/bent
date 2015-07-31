@@ -14,8 +14,12 @@ TEST_CASE("Entity iteration by View", "[view]")
 {
     bent::World world;
     auto e1 = world.Create();
+    auto ee = world.Create();
     auto e2 = world.Create();
+    world.Create().Destroy();
     auto e3 = world.Create();
+
+    ee.Destroy();
 
     e1.Add<Position>(10.0f, 20.0f);
     e3.Add<Position>(20.0f, 30.0f);
@@ -25,7 +29,7 @@ TEST_CASE("Entity iteration by View", "[view]")
     e2.Add<Flag>();
     e3.Add<Flag>();
 
-    SECTION("without query")
+    SECTION("with no requirements")
     {
         auto view = world.entities_with<>();
         auto it = view.begin();

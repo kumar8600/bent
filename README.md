@@ -6,7 +6,6 @@ An [Entity-component-system] library
 * type-safe
 * fast
   * benchmarked
-  * copy gc makes it possible
 * tiny
   * wrap this library for practical use
 * [MIT license](LICENSE)
@@ -19,13 +18,13 @@ An [Entity-component-system] library
   * Visual Studio
     * \>= 2015
   * GCC
-    * \>= 5.0 (NOTICE: Ubuntu 15.04 uses 4.9)
+    * \>=?
   * Clang
-    * not tested
+    * \>= ?
 
 ## install
 
-wait
+just copy the `include` directory or `cmake --build . --target install`
 
 ## tutorial
 
@@ -129,19 +128,6 @@ for (auto& entity : world.entities_with<Renderable, Position>())
 }
 ```
 
-### garbage collection
-
-call below in begin or end of every frame:
-
-```cpp
-world.CollectGarbage();
-```
-
-every destroyed entities and removed components are sweeped and components are sorted for better cache coherency.
-in other words, this is copy gc.
-
-when this function is called, all pointer refering components are invalidated.
-
 ### full example
 
 ```cpp
@@ -154,17 +140,15 @@ when this function is called, all pointer refering components are invalidated.
 int main()
 {
 	bent::World world;
-	
+
 	auto entity = world.Create("name");
 	entity.Add<Position>(1.0f, 1.0f);
 	entity.Add<Velocity>(1.5f, 1.5f);
 	entity.Add<Renderable>();
-	
+
 	// main loop
 	while (1)
 	{
-		world.CollectGarbage(); // sweeps removed entities and components. (And some optimizations)
-		
 		// movement system
 		for (auto& entity : world.entities_with<Position, Velocity>())
 		{
@@ -173,7 +157,7 @@ int main()
 			pos->x += vel->x;
 			pos->y += vel->y;
 		}
-		
+
 		// render system
 		for (auto& entity : world.entities_with<Renderable, Position>())
 		{

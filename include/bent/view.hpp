@@ -1,9 +1,8 @@
 #pragma once
 
-#include <bitset>
+#include <iterator>
 
-#include "internal/definitions.hpp"
-#include "internal/world_state.hpp"
+#include "internal/entity_manager.hpp"
 #include "entity_handle.hpp"
 
 namespace bent
@@ -12,30 +11,22 @@ namespace bent
 
     struct View
     {
-        struct iterator;
-
-        iterator begin()
-        {
-            return iterator(*world_state_, world_state_->entities_.begin(), world_state_->entities_.end(), component_mask_);
-        }
-
-        iterator end()
-        {
-            return iterator(*world_state_, world_state_->entities_.end(), world_state_->entities_.end(), component_mask_);
-        }
-
         struct iterator : std::iterator<std::forward_iterator_tag, EntityHandle>
         {
-            iterator& operator++()
+            reference operator*()
             {
-                do
-                {
-                    ++it_;
-                } while (it_ != end_ && (it_->marked_as_garbage || !Match(it_->component_mask, component_mask_)));
-                if (it_ != end_)
-                {
-                    entity_handle_ = EntityHandle(it_->id, *world_state_, WorldState::TemporalEntityHandle(it_ - world_state_->entities_.begin()));
-                }
+                return entity_handle_;
+            }
+
+            pointer operator->()
+            {
+                return &entity_handle_;
+            }
+
+            iterator & operator++()
+            {
+                ++index_;
+                next();
                 return *this;
             }
 
@@ -46,69 +37,75 @@ namespace bent
                 return tmp;
             }
 
-            reference operator*()
+            bool operator==(const iterator& rhs) const
             {
-                return entity_handle_;
+                return index_ == rhs.index_;
             }
 
-            pointer operator->()
-            {
-                return std::addressof(operator*());
-            }
-
-            bool operator==(const iterator & rhs) const
-            {
-                return it_ == rhs.it_;
-            }
-
-            bool operator!=(const iterator & rhs) const
+            bool operator!=(const iterator& rhs) const
             {
                 return !operator==(rhs);
             }
 
         private:
             friend View;
+            using ComponentMask = EntityManager::ComponentMask;
+            using EntityVersionVectorIterator = EntityManager::EntityVersionVector::iterator;
 
-            iterator(WorldState & world_state, WorldState::EntityContainer::iterator it, WorldState::EntityContainer::iterator end, const std::bitset<MAX_COMPONENTS> & component_mask) :
-                world_state_(&world_state),
-                it_(it),
-                end_(end),
-                entity_handle_(world_state),
-                component_mask_(component_mask)
+            iterator(EntityManager & entity_manager, const ComponentMask & component_mask, std::uint32_t index, std::uint32_t end) :
+                entity_manager_(&entity_manager),
+                component_mask_(component_mask),
+                index_(index),
+                end_(end)
             {
-                while (it_ != end_ && (it_->marked_as_garbage || !Match(it_->component_mask, component_mask_)))
-                {
-                    ++it_;
-                }
-                if (it_ != end_)
-                {
-                    entity_handle_ = EntityHandle(it_->id, *world_state_, WorldState::TemporalEntityHandle(it_ - world_state_->entities_.begin()));
-                }
+                next();
             }
 
-            static bool Match(const std::bitset<MAX_COMPONENTS> & component_mask, const std::bitset<MAX_COMPONENTS> & query)
+            void next()
             {
-                auto masked = component_mask & query;
-                return masked == query;
+                while (true)
+                {
+                    if (index_ == end_)
+                    {
+                        return;
+                    }
+                    if (entity_manager_->alive(index_) && (entity_manager_->component_mask(index_) & component_mask_) == component_mask_)
+                    {
+                        break;
+                    }
+                    ++index_;
+                }
+                entity_handle_ = EntityHandle(*entity_manager_, index_, entity_manager_->version(index_));
             }
 
-            WorldState * world_state_;
-            WorldState::EntityContainer::iterator it_;
-            WorldState::EntityContainer::iterator end_;
+            EntityManager * entity_manager_;
+            ComponentMask component_mask_;
+            std::uint32_t index_;
+            std::uint32_t end_;
             EntityHandle entity_handle_;
-            std::bitset<MAX_COMPONENTS> component_mask_;
         };
+
+        iterator begin()
+        {
+            return iterator(*entity_manager_, component_mask_, 0, entity_manager_->entity_versions_.size());
+        }
+
+        iterator end()
+        {
+            return iterator(*entity_manager_, component_mask_, entity_manager_->entity_versions_.size(), entity_manager_->entity_versions_.size());
+        }
 
     private:
         friend World;
+        using ComponentMask = EntityManager::ComponentMask;
 
-        View(WorldState & world_state, const std::bitset<MAX_COMPONENTS> & component_mask) :
-            world_state_(&world_state),
+        View(EntityManager & entity_manager, const ComponentMask & component_mask) :
+            entity_manager_(&entity_manager),
             component_mask_(component_mask)
         {
         }
 
-        WorldState * world_state_;
-        std::bitset<MAX_COMPONENTS> component_mask_;
+        EntityManager * entity_manager_;
+        ComponentMask component_mask_;
     };
 }

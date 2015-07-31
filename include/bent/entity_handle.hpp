@@ -1,11 +1,10 @@
 #pragma once
 
+#include <stdexcept>
 #include <string>
-#include <type_traits>
 
+#include "internal/entity_manager.hpp"
 #include "component_manager.hpp"
-#include "internal/definitions.hpp"
-#include "internal/world_state.hpp"
 
 namespace bent
 {
@@ -16,170 +15,148 @@ namespace bent
     {
         // getters
 
-        /// Returns an id of the entity this handle refering.
-        entity_id_t id() const
+        /// Returns an id of this entity.
+        ///
+        /// This is unique in an local execution
+        std::uint64_t id() const
         {
-            return id_;
+            return std::uint64_t(index_) | std::uint64_t(version_) << 32UL;
+        }
+
+        /// Returns whether this entity is valid or not.
+        bool valid() const
+        {
+            return entity_manager_->version(index_) == version_;
         }
 
         // entity access
 
         /// Destroys this entity.
         ///
-        /// This handle is invalidated.
+        /// All components attached to this entity are destroyed too.
         void Destroy()
         {
-            RefreshCache();
-            world_state_->RemoveEntity(cache_.temporal_handle);
-        }
-
-        /// Returns whether this entity handle is valid or not.
-        bool valid() const
-        {
-            if (cache_.version == world_state_->version())
-            {
-                return world_state_->IsEntityValid(cache_.temporal_handle);
-            }
-            else
-            {
-                auto th = world_state_->FindEntity(id());
-                return bool(th);
-            }
+            ThrowsIfInvalid();
+            entity_manager_->DestroyEntity(index_);
         }
 
         // component access
 
-        /// Adds a component T for this entity.
-        template <typename T, typename... Args>
+        /// Adds a component by emplacing.
+        template<typename T, typename... Args>
         void Add(Args&&... args)
         {
-            RefreshCache();
-            world_state_->AddComponent<T>(cache_.temporal_handle, ComponentManager::instance().id<T>(), std::forward<Args>(args)...);
+            ThrowsIfInvalid();
+            auto component_id = ComponentManager::instance().id<T>();
+            entity_manager_->AddComponent<T>(index_, component_id, std::forward<Args>(args)...);
         }
 
-        /// Adds a component for this entity by copying.
-        template <typename T>
-        void AddFrom(T && value)
+        /// Adds a component by copying or moving.
+        template<typename T>
+        void AddFrom(T&& val)
         {
+            ThrowsIfInvalid();
             using ValT = typename std::remove_reference<T>::type;
-            RefreshCache();
-            world_state_->AddComponent<ValT>(cache_.temporal_handle, ComponentManager::instance().id<ValT>(), std::forward<T>(value));
+            auto component_id = ComponentManager::instance().id<ValT>();
+            entity_manager_->AddComponent<ValT>(index_, component_id, std::forward<T>(val));
         }
 
-        /// Removes a component T attached for this entity.
-        template <typename T>
+        /// Removes the component.
+        template<typename T>
         void Remove()
         {
-            RefreshCache();
-            world_state_->RemoveComponent(cache_.temporal_handle, ComponentManager::instance().id<T>());
+            ThrowsIfInvalid();
+            auto component_id = ComponentManager::instance().id<T>();
+            entity_manager_->RemoveComponent(index_, component_id);
         }
 
-        /// Returns a pointer to a component T attached to this entity.
+        /// Gets a component pointer.
         ///
-        /// If component is not exists, returns nullptr.
-        /// This pointer is invalidated when `bent::world::collect_garbage` is called.
-        template <typename T>
+        /// This pointer is valid until this component is removed or this entity is destroyed.
+        template<typename T>
         T* Get()
         {
-            RefreshCache();
-            return static_cast<T*>(world_state_->GetComponent(cache_.temporal_handle, ComponentManager::instance().id<T>()));
+            ThrowsIfInvalid();
+            auto component_id = ComponentManager::instance().id<T>();
+            return static_cast<T*>(entity_manager_->GetComponent(index_, component_id));
         }
 
         // component access without type
-
-        /// Adds a component for this entity by copying.
+        
+        /// Adds a component by copying without type.
         void AddFrom(const std::string& component_name, const void * value)
         {
-            RefreshCache();
-            world_state_->AddComponentFrom(cache_.temporal_handle, ComponentManager::instance().id(component_name), value);
+            ThrowsIfInvalid();
+            auto component_id = ComponentManager::instance().id(component_name);
+            entity_manager_->AddComponentFrom(index_, component_id, value);
         }
 
-        /// Adds a component for this entity by moving.
+        /// Adds a component by moving without type.
         void AddFromMove(const std::string& component_name, void * value)
         {
-            RefreshCache();
-            world_state_->AddComponentFromMove(cache_.temporal_handle, ComponentManager::instance().id(component_name), value);
+            ThrowsIfInvalid();
+            auto component_id = ComponentManager::instance().id(component_name);
+            entity_manager_->AddComponentFromMove(index_, component_id, value);
         }
 
-        /// Removes a component attached for for this entity.
+        /// Removes a component without type.
         void Remove(const std::string& component_name)
         {
-            RefreshCache();
-            world_state_->RemoveComponent(cache_.temporal_handle, ComponentManager::instance().id(component_name));
+            ThrowsIfInvalid();
+            auto component_id = ComponentManager::instance().id(component_name);
+            entity_manager_->RemoveComponent(index_, component_id);
         }
 
-        /// Returns a pointer to a component attached to this entity.
+        /// Gets a component pointer without type.
         ///
-        /// If component is not exists, returns nullptr.
-        /// This pointer is invalidated when `bent::world::collect_garbage` is called.
+        /// This pointer is valid until this component is removed or this entity is destroyed.
         void* Get(const std::string& component_name)
         {
-            RefreshCache();
-            return world_state_->GetComponent(cache_.temporal_handle, ComponentManager::instance().id(component_name));
+            ThrowsIfInvalid();
+            auto component_id = ComponentManager::instance().id(component_name);
+            return entity_manager_->GetComponent(index_, component_id);
         }
 
         // operators
 
-        bool operator==(const EntityHandle& rhs) const
+        bool operator==(const EntityHandle & rhs) const
         {
-            return world_state_ == rhs.world_state_ && id_ == rhs.id_;
+            return entity_manager_ == rhs.entity_manager_ && index_ == rhs.index_ && version_ == rhs.version_;
         }
 
-        bool operator!=(const EntityHandle& rhs) const
+        bool operator!=(const EntityHandle & rhs) const
         {
             return !operator==(rhs);
         }
 
     private:
 
-        void RefreshCache() const
-        {
-            if (cache_.version == world_state_->version())
-            {
-                return;
-            }
-            else
-            {
-                auto th = world_state_->FindEntity(id());
-                if (!th)
-                {
-                    throw std::logic_error("Invalid entity handle is used");
-                }
-                cache_.temporal_handle = th;
-                cache_.version = world_state_->version();
-            }
-        }
-
-        // constructors
-
         friend World;
         friend View;
 
-        EntityHandle(WorldState & world_state) :
-            id_(INVALID_ENTITY_ID),
-            world_state_(&world_state),
-            cache_(INVALID_STATE_VERSION, WorldState::TemporalEntityHandle())
+        // don't call any member functions
+        EntityHandle() :
+            entity_manager_(nullptr),
+            index_(0),
+            version_(0)
         {}
 
-        EntityHandle(entity_id_t id, WorldState & world_state, WorldState::TemporalEntityHandle temporal_handle) :
-            id_(id),
-            world_state_(&world_state),
-            cache_(world_state.version(), temporal_handle)
+        EntityHandle(EntityManager & entity_manager, std::uint32_t index, std::uint32_t version) :
+            entity_manager_(&entity_manager),
+            index_(index),
+            version_(version)
         {}
 
-        struct cache_t
+        void ThrowsIfInvalid() const
         {
-            cache_t(state_version_t version, WorldState::TemporalEntityHandle temporal_handle) :
-                version(version),
-                temporal_handle(temporal_handle)
-            {}
+            if (!valid())
+            {
+                throw std::logic_error("The entity handle " + std::to_string(id()) + " is invalid");
+            }
+        }
 
-            state_version_t version;
-            WorldState::TemporalEntityHandle temporal_handle;
-        };
-
-        entity_id_t id_;
-        WorldState * world_state_;
-        mutable cache_t cache_;
+        EntityManager * entity_manager_;
+        std::uint32_t index_;
+        std::uint32_t version_;
     };
 }
