@@ -10,6 +10,10 @@ An [Entity-component-system] library
   * wrap this library for practical use
 * [MIT license](LICENSE)
 
+## changes
+
+[ChangeLog](CHANGELOG.md)
+
 ## prerequisites
 
 * CMake
@@ -18,7 +22,7 @@ An [Entity-component-system] library
   * Visual Studio
     * \>= 2015
   * GCC
-    * \>=?
+    * \>= ?
   * Clang
     * \>= ?
 
@@ -97,8 +101,6 @@ to get:
 ```cpp
 Position* pos = entity.Get<Position>();
 ```
-
-this pointer is invalidated when `bent::World::CollectGarbage` is called.
 
 ### systems
 
